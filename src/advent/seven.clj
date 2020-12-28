@@ -33,13 +33,8 @@
 
 (def solution-one-counter (atom 0))
 
-(defn d-out [s]
-  (with-open [w (clojure.java.io/writer "/tmp/out.edn" :append true)]
-    (.write w s)))
-
 (defn find-shiny-gold [rule-entry rules]
   (let [inc-cnt (fn [] (swap! solution-one-counter inc))
-        p-fn    (fn [v] (d-out (format "v: %s\ncnt: %d\n---" v @solution-one-counter)))
         entry-v (second rule-entry)
         loop-fn (fn [rule-v]
                   (loop [loop-v rule-v]
@@ -48,7 +43,7 @@
                       nil
                       ; search child vals looking for a match
                       (if (> (count (filter #(= "shiny gold" (key %)) loop-v)) 0)
-                        (do (inc-cnt) (p-fn loop-v) nil)
+                        (do (inc-cnt) nil)
                         ; replace any child vals having a non-nil amount by looking up the entry in the rules map
                         ; by color, replacing it with only the value found there.  this way we traverse the entire
                         ; rule set.

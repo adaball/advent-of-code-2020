@@ -1,5 +1,6 @@
 (ns advent.seven
-  (:require [clojure.string :as s]))
+  (:require [clojure.string :as s]
+            [clojure.pprint :refer [pprint]]))
 
 (defn get-input []
   (let [raw-text (slurp "resources/seven.csv")
@@ -7,13 +8,17 @@
         lines    (map #(s/split % #",\s?") lines)]
     lines))
 
-; Rule Structure
-; {"light orange" {"dark maroon" 1 "dim maroon" 3 "striped green" 5 "pale aqua" 2}}
 (defn line->rule [line]
+  "input line to rule
+  
+   input line structure:
+     light orange bags contain 1 dark maroon bag, 3 dim maroon bags, 5 striped green bags, 2 pale aqua bags.
+   rule structure: 
+     {\"light orange\" {\"dark maroon\" 1 \"dim maroon\" 3 \"striped green\" 5 \"pale aqua\" 2}}"
   (let [[root child-0] (map #(s/replace % #"\s?bags?" "") (-> line first (s/split #" contain ")))
         bag-fn         (fn [[n bag]] {bag (if (nil? n) nil (Integer/parseInt n))})
         children       (->> (conj (rest line) child-0)
-                            (map #(s/replace % #"\s?bags\.?" ""))
+                            (map #(s/replace % #"\s?bags?\.?" ""))
                             (map #(re-seq #"(\d+)\s{1}([a-z\s]+)" %)) 
                             (map flatten) 
                             (map rest)
@@ -26,50 +31,39 @@
        (map line->rule)
        (reduce merge {})))
 
-(defn rule->node [rule]
-  (let [parent      (first (keys rule))
-        children    (first (vals rule))
-        children-fn (fn [m]
-                      (if (nil? m)
-                        nil
-                        (map (fn [bag-type n] (repeat n bag-type)) m)))
-        children    (map children-fn children)]
-    (list parent children)))
+(def solution-one-counter (atom 0))
 
-(rule->node {"light orange" nil})
-(rule->node {"light orange" {"dark maroon" 1 "dim maroon" 3 "striped green" 5 "pale aqua" 2}})
+(defn d-out [s]
+  (with-open [w (clojure.java.io/writer "/tmp/out.edn" :append true)]
+    (.write w s)))
 
-
-; tree format
-; (("light orange" ("dark maroon" 
-;                   "dim maroon" "dim maroon" "dim maroon" 
-;                   "striped green" "striped green" "striped green" "striped green" "striped green"
-;                   "pale aqua" "pale aqua")))
+(defn find-shiny-gold [rule-entry rules]
+  (let [inc-cnt (fn [] (swap! solution-one-counter inc))
+        p-fn    (fn [v] (d-out (format "v: %s\ncnt: %d\n---" v @solution-one-counter)))
+        entry-v (second rule-entry)
+        loop-fn (fn [rule-v]
+                  (loop [loop-v rule-v]
+                    ; if there are no child vals to work with, end loop
+                    (if (empty? loop-v)
+                      nil
+                      ; search child vals looking for a match
+                      (if (> (count (filter #(= "shiny gold" (key %)) loop-v)) 0)
+                        (do (inc-cnt) (p-fn loop-v) nil)
+                        ; replace any child vals having a non-nil amount by looking up the entry in the rules map
+                        ; by color, replacing it with only the value found there.  this way we traverse the entire
+                        ; rule set.
+                        (recur (reduce (fn [acc [color amnt]]
+                                         (if (nil? amnt)
+                                           acc
+                                           (merge acc (get rules color))))
+                                       {}
+                                       loop-v))))))]
+    (loop-fn entry-v)))
 
 (defn solve-one []
   (let [rules (get-rules)]
-    rules))
+    (reset! solution-one-counter 0)
+    (doseq [entry (get-rules)]
+      (find-shiny-gold entry rules))
+    @solution-one-counter))
 
-
-
-(take 3 (map line->rule (get-input)))
-(take 3 (map line->rule (get-input)))
-
-
-;;      *
-;;     / \
-;;    *   4
-;;   /|\
-;;  1 2 *
-;;      |
-;;      3
-(map first (tree-seq next rest '((1 2 (3)) (4))))
-(map first (tree-seq next rest '((1 2 (3)) (4)))
-;; => ((1 2 (3)) (4))
-;; => ((1 2 (3)) 4)
-;;((1 2 (3)) (4))
-;;
-;;(      *      )
-;; ( *     ) (*)
-;;  1 2 (*)   4
-;;       3

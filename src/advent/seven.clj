@@ -58,7 +58,7 @@
 (defn solve-one []
   (let [rules (get-rules)]
     (reset! solution-one-counter 0)
-    (doseq [entry (get-rules)]
+    (doseq [entry rules]
       (find-shiny-gold entry rules))
     @solution-one-counter))
 

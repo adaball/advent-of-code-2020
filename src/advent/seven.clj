@@ -62,3 +62,32 @@
       (find-shiny-gold entry rules))
     @solution-one-counter))
 
+(def solution-two-counter (atom 0))
+
+(defn count-inner-bags [rule-entry-val rules]
+  (loop [v rule-entry-val]
+    (if (empty? v)
+      nil
+                    ; for each rule, add the bag quantities to the total count
+      (let [_       (doseq [entry v] (swap! solution-two-counter + (second entry)))
+                    
+                    ; for each rule, create a list with the color appearing as many times
+                    ; as is defined by the quantity.  
+                    ; 
+                    ; then substitute that color with its rule entry (via lookup in the rule
+                    ; map) and restart the loop.
+            results (->> v
+                         (map #(repeat (second %) (first %)))
+                         flatten
+                         (map #(get rules %))
+                         (reduce (fn [acc m] (merge-with + acc m)) {}))]
+        (recur results)))))
+
+(defn solve-two []
+  (let [rules (get-rules)
+        rule  (get rules "shiny gold")]
+   (reset! solution-two-counter 0)
+   (count-inner-bags rule rules)
+   @solution-two-counter))
+
+
